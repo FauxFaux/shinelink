@@ -24,9 +24,9 @@ Board photo:
 
 Mystery QR code in an unpopulated chip position redacted.
 
-U1 (power side): D9329 2063 - some buck regulator (odd as they have a 5V/1A barrel jack in)
-U2: ?, guessing main MCU
-U15 (ethernet side): ENC28J60-?/?? (83) 2231A?0 Microchip - SPI ethernet controller
+ * U1 (power side): D9329 2063 - some buck regulator (odd as they have a 5V/1A barrel jack in)
+ * U2: ?, guessing main MCU
+ * U15 (ethernet side): ENC28J60-?/?? (83) 2231A?0 Microchip - SPI ethernet controller
 
 
 ### 433 daughterboard
@@ -42,14 +42,26 @@ daughterdaughterboard would hence be SDO/SDI/SCLK/nSEL (pins 6/7/8/9) (or gpio o
 Pin 1 is opposite the antenna, at the top of the board, pin 12 at the bottom left.
 1, 12, 13: gnd, 5: 3.3V, 10: interupt, 11: shutdown, 14: antenna.
 
-Unable to read other chip:
+Someone's managed to identify this chip as likely a STM8S003F3P6:
 ![board photo](docs/daughter-1.jpg)
 
-Nor guess why it exists. Presumably the whole board runs at 3.3V.
+Regrettably a full microcontroller, so could be doing anything.
 
 Central microcontroller must have a spare serial interface. Only appears to have passive supports.
 
 Appears to be connected to the GPIO (pin 3 track is clear),
-and the serial lines go somewhere (throughole).
+and the serial lines go socmewhere (throughole).
 
-Don't recognise the `530.0034400` marking. LED isn't exposed outside th ecase.
+Don't recognise the `530.0034400` marking. LED isn't exposed outside the case.
+Similar marking on the main board, implying it's a custom part by the same company.
+This makes it quite likely the main processor is an STM too.
+
+
+### Next steps:
+
+* on a sacrificial receiver: lever up the daughterboard, and see if it has any useful markings.
+* guess the gpio pins on the daughterdaughter are for data, and spy on them and radio 
+  transmissions to work out the encoding.
+* work out which of the 5 pins on the daughterboard are what, and spy on the presumably spi/i²c happening there.
+* re-try reading the signal pulled from the air, with the new information it probably
+  doesn't have anything crazy going on (e.g. it's not lora, no built-in support for any modulation/encoding).
