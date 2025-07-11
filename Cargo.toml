@@ -1,0 +1,15 @@
+[package]
+name = "shinelink"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rtlsdr-rs = { git="https://github.com/ccostes/rtl-sdr-rs", branch = "main" }
+
+anyhow = "1"
+ctrlc = "3"
+itertools = "0.14"
+log = "0.4"
+num-complex = "0.4"
+rustfft = "6"
+stderrlog = "0.6"

@@ -20,5 +20,27 @@ Order of events:
 
 ---
 
+In this packet, the `67` (0x10 unencrypted) at position ~4 appears to be a sequence number:
+values observed between 0x11 and 0xfc (encrypted).
+
+The decrypted data appears to have a crc16/modbus on the end.
+Checked once with https://crccalc.com/ but have lost it.
+None of the rest of the packets look like any modbus I can source.
+
+Now wondering if all the partial captures are actually bugs:
+it's actually retransmitting nonsense because of bad buffer hygiene.
+
+e.g. this packet:
+001514FC5641441F050D1F04151E6670151C080A1E04151E66701542527A661D1E7F1406056563072E47524F5741545452462E
+
+decrypts as:
+`F;S... .KWK1CGQ11AHZL0CGQ11A. <HZL0CGQ11A      ` (with many trailing nulls)
+
+That could be a normal packet up to the end of the serials, then a crc (then end of the packet), then some random
+left over data in the rest of the buffer? Surely not.
+
+---
+
 Shinelink serial: KWK1CGQ11A
+
 ShineRF-S serial: HL0CGQ11A
