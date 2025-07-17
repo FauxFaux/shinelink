@@ -2,7 +2,8 @@ use anyhow::anyhow;
 use anyhow::{Result, bail, ensure};
 use itertools::Itertools;
 use num_complex::Complex32;
-use shinelink::read_complex_f32;
+use shinelink::demod_fm::FmDemod;
+use shinelink::read_to_complex_f32;
 use std::f32::consts::{PI, TAU};
 use std::io::Write;
 use std::{env, fs, io};
@@ -41,7 +42,7 @@ fn main() -> Result<()> {
 
     // there's probably a dsp way to do this
     let mut i = 0f32;
-    while let Some(mut sample) = read_complex_f32(&mut inp)? {
+    while let Some(mut sample) = read_to_complex_f32(&mut inp)? {
         i += 1.;
         sample *= Complex32::new((shift_rate * i).cos(), (shift_rate * i).sin());
         buf.push(demod.update(sample));
@@ -205,28 +206,5 @@ fn sign_flip(observations: &[f32]) {
             current_sign = !current_sign;
             run = 1;
         }
-    }
-}
-
-struct FmDemod {
-    gain: f32,
-    prev: Complex32,
-}
-
-impl FmDemod {
-    pub fn new(deviation: u32, sample_rate: u32) -> FmDemod {
-        assert!(deviation <= sample_rate / 2);
-
-        FmDemod {
-            gain: (TAU * deviation as f32 / sample_rate as f32).recip(),
-            prev: Complex32::new(0.0, 0.0),
-        }
-    }
-
-    pub fn update(&mut self, sample: Complex32) -> f32 {
-        let next = (sample * self.prev.conj()).arg() * self.gain;
-        self.prev = sample;
-
-        next
     }
 }
