@@ -50,11 +50,11 @@ fn main() -> Result<()> {
     });
 
     // Spawn thread to process data and output to stdout
-    let process_thread = thread::spawn(|| process_host(&SHUTDOWN, ProcessConfig {}, rx));
+    let process_thread = thread::spawn(|| process_dump(&SHUTDOWN, ProcessConfig {}, rx));
 
     // Wait for threads to finish
-    process_thread.join().unwrap()?;
     receive_thread.join().unwrap()?;
+    process_thread.join().unwrap()?;
 
     Ok(())
 }
@@ -160,6 +160,27 @@ fn receive(shutdown: &AtomicBool, radio_config: RadioConfig, tx: Sender<Vec<u8>>
     // Shut down the device and exit
     info!("Close");
     sdr.close()?;
+
+    Ok(())
+}
+
+fn process_dump(
+    shutdown: &AtomicBool,
+    _config: ProcessConfig,
+    rx: Receiver<Vec<u8>>,
+) -> Result<()> {
+    let mut out_file = fs::File::create("dump.cu8")?;
+    loop {
+        if shutdown.load(Ordering::Relaxed) {
+            break;
+        }
+        // Wait for data from the channel
+        let buf = rx.recv()?;
+
+        out_file.write_all(&buf)?;
+    }
+
+    out_file.flush()?;
 
     Ok(())
 }
