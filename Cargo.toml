@@ -9,6 +9,8 @@ rtlsdr-rs = { git="https://github.com/ccostes/rtl-sdr-rs", branch = "main" }
 anyhow = "1"
 crc = "3"
 ctrlc = "3"
+facet = "0.27"
+facet-args = "0.19"
 hex = "0.4.3"
 itertools = "0.14"
 log = "0.4"

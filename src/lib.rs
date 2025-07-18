@@ -1,13 +1,13 @@
 pub mod crc;
 pub mod demod_fm;
+pub mod squelch;
 
 use anyhow::Result;
 use num_complex::Complex;
-use std::fs::File;
 use std::io;
-use std::io::{BufReader, Read};
+use std::io::Read;
 
-pub fn read_to_complex_f32(inp: &mut BufReader<File>) -> Result<Option<Complex<f32>>> {
+pub fn read_to_complex_f32(inp: &mut impl Read) -> Result<Option<Complex<f32>>> {
     let mut buf = [0u8; 2];
     if let Err(e) = inp.read_exact(&mut buf) {
         if e.kind() == io::ErrorKind::UnexpectedEof {
