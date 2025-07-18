@@ -3,9 +3,9 @@ use itertools::Itertools;
 use shinelink::decode::decode;
 use shinelink::squelch::{Config, squelch};
 use shinelink::unambiguous;
+use std::io::Write;
 use std::path::PathBuf;
 use std::{fs, io};
-use std::io::Write;
 
 #[derive(facet::Facet)]
 struct Args {
@@ -31,10 +31,16 @@ fn main() -> Result<()> {
         )?;
         for (n, fm) in fms {
             let (crc, _rest) = decode(&fm, 18.);
-            let good = crc.iter().filter(|v| v.starts_with(b"RF") && v.len() > 30).collect_vec();
+            let good = crc
+                .iter()
+                .filter(|v| v.starts_with(b"RF") && v.len() > 30)
+                .collect_vec();
             for good in good {
                 let sn = &good[6..26];
-                if !sn.iter().all(|v| v.is_ascii_uppercase() || v.is_ascii_digit()) {
+                if !sn
+                    .iter()
+                    .all(|v| v.is_ascii_uppercase() || v.is_ascii_digit())
+                {
                     continue;
                 }
 
@@ -54,7 +60,8 @@ fn main() -> Result<()> {
                     pkt,
                     unambiguous(&data),
                 );
-                let mut file = fs::File::create(format!("{}.{n}.{}.pkt", f.file_name().display(), pkt.req))?;
+                let mut file =
+                    fs::File::create(format!("{}.{n}.{}.pkt", f.file_name().display(), pkt.req))?;
                 file.write_all(&data)?;
                 file.flush()?;
             }
