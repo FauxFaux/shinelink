@@ -3,7 +3,7 @@ use anyhow::{Result, bail, ensure};
 use itertools::Itertools;
 use num_complex::Complex32;
 use shinelink::demod_fm::FmDemod;
-use shinelink::read_to_complex_f32;
+use shinelink::{bits_to_byte, read_to_complex_f32};
 use std::f32::consts::{PI, TAU};
 use std::io::Write;
 use std::{env, fs, io};
@@ -179,14 +179,6 @@ fn main() -> Result<()> {
     }
 
     Ok(())
-}
-
-fn bits_to_byte(bits: &[bool]) -> u8 {
-    bits.iter()
-        .rev()
-        .enumerate()
-        .map(|(i, &b)| if b { 1 << i } else { 0 })
-        .sum()
 }
 
 #[allow(dead_code)]

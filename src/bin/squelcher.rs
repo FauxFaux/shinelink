@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::{env, fs, io};
 
 fn main() -> Result<()> {
-    let decimation = 32;
+    let decimation = 16;
 
     let usage = "usage: input_file samplerate deviation shift";
     let original_name = PathBuf::from(env::args_os().nth(1).ok_or(anyhow!(usage))?);

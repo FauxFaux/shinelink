@@ -464,6 +464,7 @@ dependencies = [
  "ctrlc",
  "itertools 0.14.0",
  "log",
+ "memchr",
  "num-complex",
  "rtlsdr-rs",
  "rustfft",
