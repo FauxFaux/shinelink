@@ -91,7 +91,7 @@ fn main() -> Result<()> {
 
     // sign_flip(observations);
     let slide_length = sample_rate as f32 / decimation as f32 / 10_000.;
-    println!("slide length: {}", slide_length);
+    println!("slide length: {slide_length}");
 
     // TODO: magic
     let orig_amp = 0.65;
@@ -173,7 +173,7 @@ fn main() -> Result<()> {
             out_bits[offset..]
                 .chunks_exact(8)
                 .map(bits_to_byte)
-                .map(|v| char::from(v))
+                .map(char::from)
                 .collect::<String>()
         );
     }

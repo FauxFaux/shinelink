@@ -50,10 +50,7 @@ fn main() -> Result<()> {
 
     let chunk_by = 16;
 
-    let perfects = observations
-        .chunks(chunk_by)
-        .map(|chunk| perfect(chunk))
-        .collect_vec();
+    let perfects = observations.chunks(chunk_by).map(perfect).collect_vec();
     let mut smoothed = perfects.clone();
     for i in 2..smoothed.len() - 2 {
         smoothed[i] |= perfects[i - 2..=i + 2].iter().any(|&v| v);
@@ -90,9 +87,9 @@ fn perfect(chunk: &[f32]) -> bool {
     let (min, max) = chunk
         .iter()
         .cloned()
-        .minmax_by(|a, b| f32::total_cmp(a, b))
+        .minmax_by(f32::total_cmp)
         .into_option()
         .expect("non-empty chunk");
-    let x = max - min < 2.;
-    x
+
+    max - min < 2.
 }
