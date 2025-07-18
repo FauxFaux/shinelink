@@ -1,3 +1,4 @@
+pub mod crc;
 pub mod demod_fm;
 
 use anyhow::Result;

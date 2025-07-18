@@ -2,6 +2,7 @@ use anyhow::Result;
 use itertools::Itertools;
 use memchr::memmem;
 use shinelink::bits_to_byte;
+use shinelink::crc::crc_suffixed;
 use std::collections::HashSet;
 use std::f32::consts::PI;
 use std::fs;
@@ -55,8 +56,6 @@ fn main() -> Result<()> {
 
     let key = b"GROWATTRF.";
 
-    let crc = crc::Crc::<u16>::new(&crc::CRC_16_MODBUS);
-
     let mut matches_crc = HashSet::new();
 
     for cand in &candidate_bytes {
@@ -73,16 +72,11 @@ fn main() -> Result<()> {
                     unambiguous(&decrypted),
                     hex::encode(&decrypted)
                 );
-                for i in (1..decrypted.len() - 2).rev() {
-                    let crc_bytes = &decrypted[1..i];
-                    let expected = u16::from_be_bytes([decrypted[i], decrypted[i + 1]]);
-                    if crc.checksum(crc_bytes) == expected {
-                        println!(
-                            "CRC VALID!!!! at offset {offset}: {}",
-                            unambiguous(crc_bytes)
-                        );
-                        matches_crc.insert(crc_bytes.to_vec());
-                    }
+            }
+
+            for i in (1..decrypted.len()).rev() {
+                if let Some(crc_bytes) = crc_suffixed(&decrypted[1..i]) {
+                    matches_crc.insert(crc_bytes.to_vec());
                 }
             }
         }
