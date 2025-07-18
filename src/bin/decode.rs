@@ -32,7 +32,8 @@ fn main() -> Result<()> {
 
     let mut candidate_bytes = HashSet::with_capacity(4);
 
-    for clock in (-10..10).map(|v| edge_length + (v as f32) / 10.) {
+    // e.g. 17.0, 17.1,.. to 19.0
+    for clock in (-20..30).map(|v| edge_length + (v as f32) / 10.) {
         let mut bits = Vec::new();
         for (run_length, is_positive) in &runs {
             for _ in 0..(*run_length as f32 / clock).round() as usize {
@@ -54,23 +55,52 @@ fn main() -> Result<()> {
 
     let key = b"GROWATTRF.";
 
+    let crc = crc::Crc::<u16>::new(&crc::CRC_16_MODBUS);
+
+    let mut matches_crc = HashSet::new();
+
     for cand in &candidate_bytes {
-        println!("Decoded: {:?}", unambiguous(&cand));
+        // println!("Decoded: {:?}", unambiguous(&cand));
         for offset in 0..key.len() {
-            println!(
-                "{offset}: {}",
-                unambiguous(
-                    &cand
-                        .iter()
-                        .zip(key.iter().cycle().skip(offset))
-                        .map(|(&c, &k)| c ^ k)
-                        .collect_vec()
-                )
-            );
+            let decrypted = cand
+                .iter()
+                .zip(key.iter().cycle().skip(offset))
+                .map(|(&c, &k)| c ^ k)
+                .collect_vec();
+            if likely_valid(&decrypted) {
+                println!(
+                    "{offset}: {} {}",
+                    unambiguous(&decrypted),
+                    hex::encode(&decrypted)
+                );
+                for i in (1..decrypted.len() - 2).rev() {
+                    let crc_bytes = &decrypted[1..i];
+                    let expected = u16::from_be_bytes([decrypted[i], decrypted[i + 1]]);
+                    if crc.checksum(crc_bytes) == expected {
+                        println!(
+                            "CRC VALID!!!! at offset {offset}: {}",
+                            unambiguous(crc_bytes)
+                        );
+                        matches_crc.insert(crc_bytes.to_vec());
+                    }
+                }
+            }
         }
     }
 
+    println!("{} valid", matches_crc.len());
+    for cand in &matches_crc {
+        println!("CRC matches: {} {}", unambiguous(cand), hex::encode(cand));
+    }
+
     Ok(())
+}
+
+fn likely_valid(input: &[u8]) -> bool {
+    input.windows(20).any(|w| {
+        w.iter()
+            .all(|v| v.is_ascii_digit() || v.is_ascii_uppercase())
+    }) || input.windows(10).any(|w| w.iter().all(|&v| v == 0))
 }
 
 /// detect edges in a "time domain" signal, outputting how close we are to a positive or negative edge
@@ -113,8 +143,8 @@ fn detect_edges(input: &[f32], edge_length: f32) -> Vec<f32> {
             }
             pos /= edge_pos.len() as f32;
             neg /= edge_neg.len() as f32;
-            let both = neg - pos;
-            both
+
+            neg - pos
         })
         .collect()
 }
@@ -167,4 +197,12 @@ fn unambiguous(input: &[u8]) -> String {
     }
     buf.pop();
     buf
+}
+
+#[test]
+fn test_crc() {
+    // the library has completely changed their api again, haven't they. hth hand
+    let crc = crc::Crc::<u16>::new(&crc::CRC_16_MODBUS);
+    assert_eq!(crc.checksum(b"123456789"), 19255);
+    assert_eq!(crc.checksum(b"12345678"), 14301);
 }

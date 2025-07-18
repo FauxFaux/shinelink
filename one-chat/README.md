@@ -27,6 +27,9 @@ The decrypted data appears to have a crc16/modbus on the end.
 Checked once with https://crccalc.com/ but have lost it.
 None of the rest of the packets look like any modbus I can source.
 
+CRC covers from `0x1476` (decrypted: `0x5246` (`RF`)) through to the supposed data:
+`[03] [00] [01] [02]`.
+
 Now wondering if all the partial captures are actually bugs:
 it's actually retransmitting nonsense because of bad buffer hygiene.
 

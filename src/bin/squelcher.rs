@@ -75,10 +75,7 @@ fn main() -> Result<()> {
         let flattened = normalise(&buf.iter().flat_map(|c| c.iter()).cloned().collect_vec());
 
         let decimated_sample_rate = sample_rate as usize / decimation;
-        let name = format!(
-            "{original_file_name}.{nth}.squelch.sr{}.f32",
-            decimated_sample_rate
-        );
+        let name = format!("{original_file_name}.{nth}.squelch.sr{decimated_sample_rate}.f32");
         let mut file = io::BufWriter::new(fs::File::create(&name)?);
 
         for obs in &flattened {
