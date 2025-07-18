@@ -115,6 +115,10 @@ fn recover_bytes(runs: &[(usize, bool)], edge_length: f32) -> HashSet<Vec<u8>> {
             }
         }
 
+        if bits.len() < 32 {
+            continue;
+        }
+
         for offset in 0..8 {
             let cand = bits[offset..]
                 .chunks_exact(8)
