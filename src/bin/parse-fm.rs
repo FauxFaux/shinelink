@@ -3,7 +3,7 @@ use anyhow::{Result, bail, ensure};
 use itertools::Itertools;
 use num_complex::Complex32;
 use shinelink::demod_fm::FmDemod;
-use shinelink::{bits_to_byte, read_to_complex_f32};
+use shinelink::{bits_to_byte, read_one_complex_f32};
 use std::f32::consts::{PI, TAU};
 use std::io::Write;
 use std::{env, fs, io};
@@ -42,7 +42,7 @@ fn main() -> Result<()> {
 
     // there's probably a dsp way to do this
     let mut i = 0f32;
-    while let Some(mut sample) = read_to_complex_f32(&mut inp)? {
+    while let Some(mut sample) = read_one_complex_f32(&mut inp)? {
         i += 1.;
         sample *= Complex32::new((shift_rate * i).cos(), (shift_rate * i).sin());
         buf.push(demod.update(sample));

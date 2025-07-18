@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, anyhow, ensure};
+use anyhow::{Context, Result, anyhow};
 use shinelink::squelch::{Config, squelch};
 use std::io::Write;
 use std::path::PathBuf;
@@ -37,15 +37,6 @@ fn main() -> Result<()> {
         deviation: args.deviation,
         shift: args.shift,
     };
-
-    ensure!(
-        config.deviation <= config.sample_rate / 2,
-        "deviation must be less than half the sample rate"
-    );
-    ensure!(
-        config.shift.abs() <= config.sample_rate as f64 / 2.,
-        "shift must be less than half the sample rate"
-    );
 
     let merged = squelch(&mut inp, &config)?;
 

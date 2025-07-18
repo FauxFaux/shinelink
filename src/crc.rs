@@ -13,3 +13,10 @@ pub fn crc_suffixed(data: &[u8]) -> Option<&[u8]> {
         None
     }
 }
+
+#[test]
+fn test_crc() {
+    // the library has completely changed their api again, haven't they. hth hand
+    assert_eq!(MODBUS.checksum(b"123456789"), 19255);
+    assert_eq!(MODBUS.checksum(b"12345678"), 14301);
+}

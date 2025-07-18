@@ -1,6 +1,6 @@
 use crate::demod_fm::FmDemod;
-use crate::read_to_complex_f32;
-use anyhow::Result;
+use crate::read_one_complex_f32;
+use anyhow::{Result, ensure};
 use itertools::Itertools;
 use num_complex::Complex32;
 use std::f32::consts::TAU;
@@ -19,6 +19,15 @@ pub struct Config {
 
 /// reads cu8 samples, and extracts normalised, demodulated, decimated observations
 pub fn squelch(inp: &mut impl Read, config: &Config) -> Result<Vec<(usize, Vec<f32>)>> {
+    ensure!(
+        config.deviation <= config.sample_rate / 2,
+        "deviation must be less than half the sample rate"
+    );
+    ensure!(
+        config.shift.abs() <= config.sample_rate as f64 / 2.,
+        "shift must be less than half the sample rate"
+    );
+
     let observations = read_shift_demod_decimate(inp, config)?;
 
     let chunk_by = 16;
@@ -64,7 +73,7 @@ fn read_shift_demod_decimate(inp: &mut impl Read, config: &Config) -> anyhow::Re
     let shift_rate = f64::from(TAU) * config.shift / config.sample_rate as f64;
     let mut i = 0f64;
 
-    while let Some(mut sample) = read_to_complex_f32(inp)? {
+    while let Some(mut sample) = read_one_complex_f32(inp)? {
         i += 1.;
         sample *= Complex32::new((shift_rate * i).cos() as f32, (shift_rate * i).sin() as f32);
         buf.push(demod.update(sample));
