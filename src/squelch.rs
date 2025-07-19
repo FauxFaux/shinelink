@@ -4,8 +4,7 @@ use anyhow::{Result, ensure};
 use itertools::Itertools;
 use num_complex::Complex32;
 use std::f32::consts::TAU;
-use std::io::{Read, Write};
-use std::{fs, io};
+use std::io::Read;
 
 pub struct Config {
     /// how much to lowpass the signal

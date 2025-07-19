@@ -13,55 +13,120 @@ Projects like [grott](https://github.com/johanmeijer/grott) interfere with the c
 Projects like [OpenInverterGateway](https://github.com/OpenInverterGateway/OpenInverterGateway) replace the firmware
 on a ShineWifi-S.
 
-### ShineLanBox
+Then there's [growatt-proxy](https://github.com/ehoutsma/Growatt-proxy/blob/d771c0265cdb0bc1d7455ff60fd4810f9fba0df0/extractData.php),
+which looks like it reads something like this format, but in a different way?
 
-[fccid](https://fccid.io/2AAJ9-SHINELANBOX)
+### hardware
 
-Reasonably strong evidence that this is a 433MHz ISM-band device.
+Initially, I had a look at the [hardware](HARDWARE.md) and bus pirated out [one-chat](one-chat/README.md),
+which gives a good idea about how the hardware works, but not a very good idea about how the data works.
 
-Board photo:
-![ShineLanBox board](docs/board-1.jpg)
+### this codebase
 
-Mystery QR code in an unpopulated chip position redacted.
+Then, this codebase came about.
 
- * U1 (power side): D9329 2063 - some buck regulator (odd as they have a 5V/1A barrel jack in)
- * U2: ?, guessing main MCU
- * U15 (ethernet side): ENC28J60-?/?? (83) 2231A?0 Microchip - SPI ethernet controller
+This codebase decodes some packets given some help, enough for me to work out a few things:
 
+1. Pretty confident it's a custom protocol, which just shares structs over the wire.
+2. As far as I can tell, the radio link is _very_ unreliable, I believe due to hardware issues,
+   or something severely, catastrophically wrong with everything I have ever done.
+3. The data resolution or frequency is not significantly above what the app offers.
+4. There's no security, you chat to anyone's inverter having seen any packet.
 
-### 433 daughterboard
+### decode pipeline
 
-daughterdaughterboard:
- * SI4432 BPS1K5 2141 - Si4432 revision B, [internal], 2021 week 41 
- * 6-pin chip labelled "100"
- * crystal labelled "JHF 30.000"
+- [rtl-sdr-snipper](https://github.com/FauxFaux/rtl-sdr-snipper) monitors the approximate frequency (around 434.2MHz)
+- [squelcher](src/bin/squelcher.rs) processes a `cu8` radio capture into multiple `f32` "fm" demodulations, one per packet
+- [decode](src/bin/decode.rs) reads an `f32` file and tries to synchronise, clock recover, decode, decrypt and checksum the packets
 
-Visually very similar to the [G-NiceRF RF4432](docs/nicerf-4432.pdf)
+Or, in one go:
 
-daughterdaughterboard would hence be SDO/SDI/SCLK/nSEL (pins 6/7/8/9) (or gpio on 2/3/4)?
-Pin 1 is opposite the antenna, at the top of the board, pin 12 at the bottom left.
-1, 12, 13: gnd, 5: 3.3V, 10: interupt, 11: shutdown, 14: antenna.
+- [perfect-packets](src/bin/perfect-packets.rs) reads a directory of `cu8`s and saves `{source}.{packet-type}.pkt` dumps of all recognised packets.
 
-Someone's managed to identify this chip as likely a STM8S003F3P6:
-![board photo](docs/daughter-1.jpg)
+### general protocol structure
 
-Regrettably a full microcontroller, so could be doing anything.
+Packets are:
+ * "RF"
+ * sequence number, doesn't appear to be used for anything
+ * 2 bytes of nonsense, probably protocol version
+ * serial of the ShineLanBox and the ShineLink-X/S in ascii
+ * packet type, 1 byte (maybe two bytes including the \0 below)
+ * \0
+ * data, pre-determined length
+ * crc16/modbus checksum
 
-Central microcontroller must have a spare serial interface. Only appears to have passive supports.
+The transaction goes:
 
-Appears to be connected to the GPIO (pin 3 track is clear),
-and the serial lines go socmewhere (throughole).
+ * ShineLanBox sends a packet with the data type it wants, and the data set to `0x01 0x00` (?)
+ * ShineLink-X/S responds with a packet of the same type, with the data set to the requested data,
+   sometimes(?) multiple times (for reliability?)
+ * end
 
-Don't recognise the `530.0034400` marking. LED isn't exposed outside the case.
-Similar marking on the main board, implying it's a custom part by the same company.
-This makes it quite likely the main processor is an STM too.
+### packet type 172
 
+The most interesting packet is type `172`, examples in
+[172/](172). [parse-172](src/parse/172.rs) is an attempt at parsing them:
 
-### Next steps:
+```text
+2025-07-17T22_43_19.17023.pkt:
+4:    2405
+7:      17
+10:  -1394   these are probably "active energy"
+13:   4224    / "reactive energy" as the app calls them in the debug menu
+16:  -3172
+19:   -336
+22:  -1394
+23:   4224
+24:  -3172
+25:   -336
+26:    499    probably grid frequency, 49.9
+31:   3785    these four are increasing, probably kWh since some date
+33:   1046    ... but they don't seem to line up with the app numbers in magnitude
+35:   3805
+36:   1046
+```
 
-* on a sacrificial receiver: lever up the daughterboard, and see if it has any useful markings.
-* guess the gpio pins on the daughterdaughter are for data, and spy on them and radio 
-  transmissions to work out the encoding.
-* work out which of the 5 pins on the daughterboard are what, and spy on the presumably spi/i²c happening there.
-* re-try reading the signal pulled from the air, with the new information it probably
-  doesn't have anything crazy going on (e.g. it's not lora, no built-in support for any modulation/encoding).
+The gaps are probably related to 3-phase (i.e. we're getting zeros for phases except the first).
+
+To further interpret this, you'd need data from various times and correlations with the app data.
+Or just to look at what `grott` does when it receives these packets.
+
+### other packets
+
+Noting that short packets are more likely to be decoded.
+
+- `60` (short, 65% of captured packets) has just the serial number of the inverter in, and space for multiple other serials
+- `33` (short, 3% of captured packets) is just the serial number again, and the date in local time (e.g. `2025-07-19 14:43:19`).
+- `14` (short, 3% of captured packets) contains just four bytes, two of which are zero. Some flags?
+- `13` (short, 2% of captured packets) contains just three bytes, two of which are zero. Some flags?
+- `156` (long, <1% of captured packets) contains a bunch of metadata, hardware versions, standards(?), install date, ?
+
+25% are the previously discussed `172` packets, which come every five minutes (BOOOO), or probable errors.
+
+### hardware issues
+
+Recovering the clock appears to be very difficult. You can have an apparently strong signal,
+but will see very poorly clocked data.
+
+I believe there are hardware glitches occurring, or my reception radio has a very unlikely issue. I've eliminated host, software, and driver.
+The protocol is question/answer, and sometimes the answer is never attempted, suggesting that it's a real issue that happens in production.
+
+For example, here is a strong signal after FM demodulation,
+clearly showing some pulses, with plenty of resolution to measure and discuss their lengths:
+
+![sinuous signal with timing marks](docs/fm-1.png)
+
+However, this "up" pulse is 3.5 bits long. This corresponds to a discontinuity in the "carrier" signal,
+represented by this vertical glitch on the waterfall:
+
+![carrier discontinuity](docs/fm-1.jpg)
+
+Who knows how long that discontinuity is! Half a bit? 1.5 bits? ??? Recovering from this is challenging.
+
+These discontinuities are common, for example, here is two within a few bits, one destroying an edge:
+
+![double discontinuity](docs/disc-2.jpg)
+
+---
+
+Given these errors, and the infrequency of the interesting data, it seems not fun to dig deeper.
