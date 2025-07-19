@@ -4,7 +4,8 @@ use anyhow::{Result, ensure};
 use itertools::Itertools;
 use num_complex::Complex32;
 use std::f32::consts::TAU;
-use std::io::Read;
+use std::io::{Read, Write};
+use std::{fs, io};
 
 pub struct Config {
     /// how much to lowpass the signal
@@ -31,17 +32,25 @@ pub fn squelch(inp: &mut impl Read, config: &Config) -> Result<Vec<(usize, Vec<f
     let observations = read_shift_demod_decimate(inp, config)?;
 
     let chunk_by = 16;
+    let smoothing = 120;
 
     let perfects = observations.chunks(chunk_by).map(is_perfect).collect_vec();
-    let smoothed = smooth(&perfects);
+    let smoothed = smooth(&perfects, smoothing);
 
-    let merged = merge_runs(&observations, &smoothed, chunk_by);
+    let merged = merge_runs(&observations, &smoothed, chunk_by, smoothing);
     Ok(merged)
 }
 
-fn merge_runs(observations: &[f32], smoothed: &[bool], chunk_by: usize) -> Vec<(usize, Vec<f32>)> {
+fn merge_runs(
+    observations: &[f32],
+    smoothed: &[bool],
+    chunk_by: usize,
+    smoothing: usize,
+) -> Vec<(usize, Vec<f32>)> {
     let mut picked = Vec::with_capacity(8);
     let mut buf = Vec::with_capacity(64);
+
+    let smoothing = smoothing * chunk_by;
 
     for (chunk_no, (v, chunk)) in smoothed
         .iter()
@@ -57,14 +66,19 @@ fn merge_runs(observations: &[f32], smoothed: &[bool], chunk_by: usize) -> Vec<(
         }
 
         let concatenated = buf.iter().flat_map(|c| c.iter()).cloned().collect_vec();
-        picked.push((chunk_no, normalise(&concatenated)));
+        let normalised = if concatenated.len() > smoothing * 2 {
+            normalise(&concatenated[smoothing..concatenated.len() - smoothing])
+        } else {
+            concatenated
+        };
+        picked.push((chunk_no, normalised));
         buf.clear();
     }
 
     picked
 }
 
-fn read_shift_demod_decimate(inp: &mut impl Read, config: &Config) -> anyhow::Result<Vec<f32>> {
+fn read_shift_demod_decimate(inp: &mut impl Read, config: &Config) -> Result<Vec<f32>> {
     let mut demod = FmDemod::new(config.deviation, config.sample_rate);
 
     let mut buf = Vec::with_capacity(64);
@@ -89,12 +103,11 @@ fn read_shift_demod_decimate(inp: &mut impl Read, config: &Config) -> anyhow::Re
     Ok(observations)
 }
 
-fn smooth(orig: &[bool]) -> Vec<bool> {
-    let mut smoothed = orig.to_vec();
-    for i in 2..smoothed.len() - 2 {
-        smoothed[i] |= orig[i - 2..=i + 2].iter().any(|&v| v);
-    }
-    smoothed
+fn smooth(orig: &[bool], s: usize) -> Vec<bool> {
+    let end = orig.len() - s;
+    (0..orig.len())
+        .map(|i| i > s && i < end && orig[i - s..i + s].iter().any(|&v| v))
+        .collect()
 }
 
 fn normalise(orig: &[f32]) -> Vec<f32> {

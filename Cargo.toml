@@ -19,3 +19,6 @@ num-complex = "0.4"
 rayon = "1"
 rustfft = "6"
 stderrlog = "0.6"
+
+[profile.release]
+debug = true

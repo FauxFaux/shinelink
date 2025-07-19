@@ -16,6 +16,7 @@ impl FmDemod {
         }
     }
 
+    #[inline]
     pub fn update(&mut self, sample: Complex32) -> f32 {
         let next = (sample * self.prev.conj()).arg() * self.gain;
         self.prev = sample;
