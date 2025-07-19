@@ -1,3 +1,4 @@
+pub mod bulk;
 pub mod crc;
 pub mod decode;
 pub mod demod_fm;
