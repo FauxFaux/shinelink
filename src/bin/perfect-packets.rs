@@ -15,7 +15,7 @@ struct Args {
 }
 
 fn main() -> Result<()> {
-    let args: Args = facet_args::from_std_args().context("usage: many-packets input_dir")?;
+    let args: Args = facet_args::from_std_args().context("usage: perfect-packets input_dir")?;
 
     let config = Config {
         decimation: 16,
